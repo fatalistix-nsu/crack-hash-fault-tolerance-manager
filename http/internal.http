@@ -1,0 +1,5 @@
+### PATCH request to complete part
+PATCH http://0.0.0.0:8080/internal/api/worker/hash/crack/request
+    ?generated-in=IntelliJ IDEA
+
+###
