@@ -1,0 +1,75 @@
+openapi: "3.0.3"
+info:
+  title: "Crack Hash Manager"
+  description: "Manager that serves crack hashing workers"
+  version: "1.0.0"
+servers:
+  - url: "http://0.0.0.0:8080"
+paths:
+  /api/hash/crack:
+    post:
+      description: "Start cracking hash"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hash:
+                  type: string
+                  description: "Hash to crack"
+                  example: "e2fc714c4727ee9395f324cd2e7f331f"
+                maxLength:
+                  type: number
+                  description: "Hash max length"
+                  example: 4
+      responses:
+        "200":
+          description: "Crack started"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    description: "ID of cracking request"
+                    example: "730a04e6-4de9-41f9-9d5b-53b88b17afac"
+  /api/hash/status:
+    get:
+      description: "Get crack status"
+      parameters:
+        - name: requestId
+          in: query
+          description: "Id of cracking request"
+          required: true
+          schema:
+            type: string
+            example: "730a04e6-4de9-41f9-9d5b-53b88b17afac"
+      responses:
+        "200":
+          description: "Crack status"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: "Status of cracking request"
+                    enum:
+                      - IN_PROGRESS
+                      - READY
+                    example: READY
+                  data:
+                    type: array
+                    description: "Suitable words that give requested hash, null till ready"
+                    nullable: true
+                    items:
+                      type: string
+                    example:
+                      - "string1"
+                      - "string2"
+components:
+  schemas: { }
