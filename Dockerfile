@@ -30,7 +30,7 @@ WORKDIR $HOME/src
 RUN gradle buildFatJar --no-daemon
 
 FROM amazoncorretto:21 AS runtime
-EXPOSE 8080
+EXPOSE 6969
 RUN mkdir /app
-COPY --from=build /home/gradle/src/build/libs/*.jar /app/*.jar
-ENTRYPOINT ["java","-jar","/app/crack-hash-manager-all.jar"]
+COPY --from=build /home/gradle/src/build/libs/*.jar /app/crack-hash-manager.jar
+ENTRYPOINT ["java","-jar","/app/crack-hash-manager.jar"]
