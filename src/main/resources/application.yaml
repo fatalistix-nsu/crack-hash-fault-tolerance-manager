@@ -3,7 +3,7 @@ ktor:
     modules:
      - com.github.fatalistix.ApplicationKt.module
   deployment:
-    port: 6969
+    port: $MANAGER_PORT
 
 application:
   alphabet: "abcdefghijklmnopqrstuvwxyz1234567890"
