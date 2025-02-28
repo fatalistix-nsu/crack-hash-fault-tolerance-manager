@@ -24,13 +24,13 @@ import org.koin.logger.slf4jLogger
 import org.slf4j.event.*
 
 fun Application.configureMonitoring() {
-//    install(CallId) {
-//        header(HttpHeaders.XRequestId)
-//        verify { callId: String ->
-//            callId.isNotEmpty()
-//        }
-//    }
-//    install(KHealth)
+   install(CallId) {
+       header(HttpHeaders.XRequestId)
+       verify { callId: String ->
+           callId.isNotEmpty()
+       }
+   }
+   install(KHealth)
 //    install(DropwizardMetrics) {
 //        Slf4jReporter.forRegistry(registry)
 //            .outputTo(this@configureMonitoring.log)
