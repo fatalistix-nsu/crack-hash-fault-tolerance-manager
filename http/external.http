@@ -1,11 +1,11 @@
 ### POST request to start cracking hash
-POST http://0.0.0.0:8080/api/hash/crack
+POST http://0.0.0.0:6969/api/hash/crack
 Content-Type: application/json
 
 {
   "hash": "e2fc714c4727ee9395f324cd2e7f331f",
-  "max_length": 6
+  "max_length": 5
 }
 
 ### GET request to check task status
-GET http://0.0.0.0:8080/api/hash/status?requestId=6a006dbf-84e0-4214-8b1a-db404b576108
+GET http://0.0.0.0:6969/api/hash/status?requestId=6ead012b-14ee-4473-8f1d-456e70c7c4b9
