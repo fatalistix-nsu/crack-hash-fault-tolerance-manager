@@ -6,7 +6,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-private data class GetStatusResponse(
+data class GetStatusResponse(
     val status: String,
     val data: List<String>?,
 )
