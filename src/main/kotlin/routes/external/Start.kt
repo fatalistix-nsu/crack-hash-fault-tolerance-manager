@@ -1,17 +1,16 @@
 package com.github.fatalistix.routes.external
 
-import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.services.CrackService
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-private data class StartCrackRequest(
+data class StartCrackRequest(
     val hash: String,
     val maxLength: ULong,
 )
 
-private data class StartCrackResponse(
+data class StartCrackResponse(
     val requestId: String,
 )
 

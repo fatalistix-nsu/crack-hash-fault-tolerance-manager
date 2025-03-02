@@ -9,7 +9,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 
-private data class CompleteRequest(
+data class CompleteRequest(
     val requestId: String,
     val taskId: String,
     val workerId: String,

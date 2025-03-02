@@ -7,11 +7,11 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-private data class RegisterRequest(
+data class RegisterRequest(
     val workerPort: UShort,
 )
 
-private data class RegisterResponse(
+data class RegisterResponse(
     val workerId: String,
 )
 
