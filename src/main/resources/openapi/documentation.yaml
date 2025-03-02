@@ -20,7 +20,7 @@ paths:
                   type: string
                   description: "Hash to crack"
                   example: "e2fc714c4727ee9395f324cd2e7f331f"
-                maxLength:
+                max_length:
                   type: number
                   description: "Hash max length"
                   example: 4
