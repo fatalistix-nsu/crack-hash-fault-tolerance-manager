@@ -4,7 +4,7 @@ import com.github.fatalistix.domain.model.SubTask
 import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Worker
 
-class SubTaskGenerator (
+internal class SubTaskGenerator (
     private val originalSubTask: SubTask,
 ) {
     constructor(task: Task) : this(task.toSubTask(0UL, task.size.value))

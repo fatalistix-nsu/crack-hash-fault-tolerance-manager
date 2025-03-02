@@ -23,7 +23,7 @@ private data class TaskRequest(
     val end: ULong,
 )
 
-class SubTaskSender {
+internal class SubTaskSender {
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {

@@ -2,7 +2,7 @@ package com.github.fatalistix.services.execution
 
 import java.util.TreeSet
 
-class RangeAggregator {
+internal class RangeAggregator {
     private val ranges = TreeSet<Pair<ULong, ULong>>(compareBy { it.first })
 
     fun addRange(start: ULong, end: ULong) {
