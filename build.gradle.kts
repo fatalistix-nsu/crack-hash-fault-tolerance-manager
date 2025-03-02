@@ -38,6 +38,7 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics")
     implementation("io.ktor:ktor-server-netty")
     implementation("io.ktor:ktor-server-request-validation")
+    implementation("io.ktor:ktor-server-status-pages")
     implementation("io.ktor:ktor-server-swagger")
     implementation("io.ktor:ktor-serialization-jackson")
     implementation("io.insert-koin:koin-ktor:$koin_version")
