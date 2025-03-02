@@ -12,7 +12,8 @@ import kotlin.time.Duration
 class ActorManager(
     private val workerPool: WorkerPool,
     count: Int,
-    private val responseTimeout: Duration,
+    private val workerResponseTimeout: Duration,
+    private val workerAcquireTimeout: Duration,
     private val log: Logger,
 ) {
     private val semaphore = Semaphore(count)
@@ -20,7 +21,7 @@ class ActorManager(
 
     suspend fun execute(task: Task): Result<List<String>> = runCatching {
         semaphore.withPermit {
-            val actor = Actor(workerPool, task, responseTimeout, log)
+            val actor = Actor(workerPool, task, workerResponseTimeout, workerAcquireTimeout, log)
             taskIdToActor[task.id] = actor
             actor.process()
         }

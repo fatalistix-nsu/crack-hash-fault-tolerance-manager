@@ -10,7 +10,8 @@ import kotlin.time.Duration
 
 fun crackModule(config: ApplicationConfig, log: Logger) = module {
     val actorCount = config.property("application.actor.count").getString().toInt()
-    val actorResponseTimeout = Duration.parse(config.property("application.actor.response.timeout").getString())
+    val workerResponseTimeout = Duration.parse(config.property("application.worker.result.timeout").getString())
+    val workerAcquireTimeout = Duration.parse(config.property("application.worker.acquire.timeout").getString())
 
     single<CrackService> {
         CrackService(
@@ -24,7 +25,8 @@ fun crackModule(config: ApplicationConfig, log: Logger) = module {
         ActorManager(
             workerPool = get(),
             count = actorCount,
-            responseTimeout = actorResponseTimeout,
+            workerResponseTimeout = workerResponseTimeout,
+            workerAcquireTimeout = workerAcquireTimeout,
             log = log,
         )
     }

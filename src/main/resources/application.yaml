@@ -9,5 +9,8 @@ application:
   alphabet: "abcdefghijklmnopqrstuvwxyz1234567890"
   actor:
     count: 5
+  worker:
     response:
+      timeout: 200s
+    acquire:
       timeout: 200s

@@ -1,6 +1,7 @@
 package com.github.fatalistix.services.execution
 
 import co.touchlab.stately.collections.ConcurrentMutableSet
+import com.github.fatalistix.domain.exception.NoWorkersAvailableException
 import com.github.fatalistix.domain.model.CompletedSubTask
 import com.github.fatalistix.domain.model.SubTask
 import com.github.fatalistix.domain.model.Task
@@ -20,7 +21,8 @@ import kotlin.time.Duration
 class Actor(
     private val workerPool: WorkerPool,
     private val task: Task,
-    private val responseTimeout: Duration,
+    private val workerResponseTimeout: Duration,
+    private val workerAcquireTimeout: Duration,
     private val log: Logger,
 ) {
     private val completedParts = MutableSharedFlow<CompletedSubTask>()
@@ -32,16 +34,7 @@ class Actor(
     private val result = ConcurrentMutableSet<String>()
 
     suspend fun process(): List<String> {
-        val generator = SubTaskGenerator(task)
-        while (generator.hasNext()) {
-            val worker = workerPool.take()
-            log.info("picked worker [{}] for task [{}]", worker.id, task.id)
-
-            val subTask = generator.next(worker)
-            log.info("picked subtask [{}:{}) for task [{}] and worker [{}]", subTask.start, subTask.end, task.id, worker.id)
-
-            scope.launch { serveSubTask(subTask, worker) }
-        }
+        processSubTask(SubTaskGenerator(task))
 
         while (true) {
             val result = unservedParts.receiveCatching()
@@ -52,18 +45,24 @@ class Actor(
             }
 
             val uncompletedSubTask = result.getOrThrow()
-            val uncompletedGenerator = SubTaskGenerator(uncompletedSubTask)
-
-            while (uncompletedGenerator.hasNext()) {
-                val worker = workerPool.take()
-                val subTask = uncompletedGenerator.next(worker)
-                scope.launch { serveSubTask(subTask, worker) }
-            }
+            processSubTask(SubTaskGenerator(uncompletedSubTask))
         }
 
         scope.cancel()
 
         return result.toList()
+    }
+
+    private suspend fun processSubTask(generator: SubTaskGenerator) {
+        while (generator.hasNext()) {
+            val worker = workerPool.takeOrThrow(workerAcquireTimeout, task)
+            log.info("picked worker [{}] for task [{}]", worker.id, task.id)
+
+            val subTask = generator.next(worker)
+            log.info("picked subtask [{}:{}) for task [{}] and worker [{}]", subTask.start, subTask.end, task.id, worker.id)
+
+            scope.launch { serveSubTask(subTask, worker) }
+        }
     }
 
     private suspend fun serveSubTask(subTask: SubTask, worker: Worker) {
@@ -78,7 +77,7 @@ class Actor(
             worker.id
         )
 
-        val receiveResult = withTimeoutOrNull(responseTimeout) {
+        val receiveResult = withTimeoutOrNull(workerResponseTimeout) {
             val deferred = async { completedParts.filter { it.subTaskId == subTaskId }.first() }
 
             val sendResult = sender.sendSubTask(subTaskId, subTask, worker)
@@ -124,5 +123,15 @@ class Actor(
         log.error("failed with timeout or null for subTaskId [{}]", subTaskId)
         unservedParts.send(subTask)
         workerPool.deregister(worker)
+    }
+
+    private suspend fun WorkerPool.takeOrThrow(timeout: Duration, task: Task): Worker {
+        val worker = withTimeoutOrNull(timeout) { take() }
+        if (worker == null) {
+            log.error("No worker found for task [{}]", task.id)
+            throw NoWorkersAvailableException("No workers available")
+        }
+
+        return worker
     }
 }

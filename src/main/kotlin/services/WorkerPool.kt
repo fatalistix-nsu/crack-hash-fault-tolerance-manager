@@ -1,17 +1,22 @@
 package com.github.fatalistix.services
 
 import co.touchlab.stately.collections.ConcurrentMutableMap
-import com.github.fatalistix.domain.exception.NoWorkersLeftException
+import com.github.fatalistix.domain.exception.NoWorkersAvailableException
 import com.github.fatalistix.domain.model.Worker
-import com.github.fatalistix.util.generateId
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration
 
 class WorkerPool {
 
     private val registeredWorkers = ConcurrentMutableMap<String, Worker>()
     private val workerChannel = Channel<Worker>(Channel.UNLIMITED)
 
-    suspend fun take(): Worker {
+    suspend fun take(): Worker? {
+        if (registeredWorkers.isEmpty()) {
+            return null
+        }
+
         while (true) {
             val result = workerChannel.receiveCatching()
             if (result.isSuccess) {
@@ -20,7 +25,7 @@ class WorkerPool {
                     return worker
                 }
             } else if (result.isClosed) {
-                throw NoWorkersLeftException()
+                return null
             }
         }
     }
@@ -45,9 +50,6 @@ class WorkerPool {
 
     fun deregister(worker: Worker) {
         registeredWorkers.remove(worker.id)
-        if (registeredWorkers.isEmpty()) {
-            workerChannel.close()
-        }
     }
 
     fun get(workerId: String) = registeredWorkers[workerId]
