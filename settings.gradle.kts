@@ -1,1 +1,1 @@
-rootProject.name = "crack-hash-manager"
+rootProject.name = "crack-hash-fault-tolerance-manager"
