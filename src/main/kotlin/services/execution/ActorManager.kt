@@ -1,8 +1,8 @@
 package com.github.fatalistix.services.execution
 
 import co.touchlab.stately.collections.ConcurrentMutableMap
-import com.github.fatalistix.domain.model.CompletedSubTask
-import com.github.fatalistix.domain.model.Task
+import com.github.fatalistix.domain.model.CompletedTask
+import com.github.fatalistix.domain.model.Request
 import com.github.fatalistix.services.WorkerPool
 import io.ktor.util.logging.*
 import kotlinx.coroutines.sync.Semaphore
@@ -17,17 +17,17 @@ class ActorManager(
     private val log: Logger,
 ) {
     private val semaphore = Semaphore(count)
-    private val taskIdToActor = ConcurrentMutableMap<String, Actor>()
+    private val requestIdToActor = ConcurrentMutableMap<String, Actor>()
 
-    suspend fun execute(task: Task): Result<List<String>> = runCatching {
+    suspend fun execute(request: Request): Result<List<String>> = runCatching {
         semaphore.withPermit {
-            val actor = Actor(workerPool, task, workerResponseTimeout, workerAcquireTimeout, log)
-            taskIdToActor[task.id] = actor
+            val actor = Actor(workerPool, request, workerResponseTimeout, workerAcquireTimeout, log)
+            requestIdToActor[request.id] = actor
             actor.process()
         }
-    }.also { taskIdToActor.remove(task.id) }
+    }.also { requestIdToActor.remove(request.id) }
 
-    suspend fun notifyCompleted(completedSubTask: CompletedSubTask) {
-        taskIdToActor[completedSubTask.id]?.notifyCompleted(completedSubTask)
+    suspend fun notifyCompleted(completedTask: CompletedTask) {
+        requestIdToActor[completedTask.requestId]?.notifyCompleted(completedTask)
     }
 }

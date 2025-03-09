@@ -15,7 +15,8 @@ fun crackModule(config: ApplicationConfig, log: Logger) = module {
 
     single<CrackService> {
         CrackService(
-            actorManager = get()
+            actorManager = get(),
+            log = log,
         )
     }
 

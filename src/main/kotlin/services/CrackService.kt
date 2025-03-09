@@ -1,41 +1,50 @@
 package com.github.fatalistix.services
 
 import co.touchlab.stately.collections.ConcurrentMutableMap
+import com.github.fatalistix.domain.model.Request
 import com.github.fatalistix.domain.model.Result
-import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.services.execution.ActorManager
-import kotlinx.coroutines.*
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import com.github.fatalistix.util.generateId
+import io.ktor.util.logging.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class CrackService(
     private val actorManager: ActorManager,
+    private val log: Logger,
 ) {
-    private val _requests = ConcurrentMutableMap<String, Result>()
+    private val _results = ConcurrentMutableMap<String, Result>()
 
-    val requests: MutableMap<String, Result> = _requests
+    val results: MutableMap<String, Result> = _results
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    @OptIn(ExperimentalUuidApi::class)
     fun startCrack(alphabet: String, hash: String, maxLength: ULong): String {
-        val requestId = Uuid.random().toString()
-        val task = Task(requestId, alphabet, hash, maxLength)
-        _requests[requestId] = Result()
+        val requestId = generateId()
+        val request = Request(requestId, alphabet, hash, maxLength)
+        _results[requestId] = Result()
 
         scope.launch {
-            executeTask(task, requestId)
+            executeRequest(request, requestId)
         }
 
         return requestId
     }
 
-    private suspend fun executeTask(task: Task, requestId: String) {
-        val result = actorManager.execute(task)
+    private suspend fun executeRequest(request: Request, requestId: String) {
+        val result = actorManager.execute(request)
         result.onSuccess { data ->
-            _requests.computeIfPresent(requestId) { _, v ->
+            results.computeIfPresent(requestId) { _, v ->
                 v.complete(data)
             }
+            log.info("Successfully executed request {}", request)
+        }
+        result.onFailure { error ->
+            results.computeIfPresent(requestId) { _, v ->
+                v.error()
+            }
+            log.error("Failed to execute request", error)
         }
     }
 }

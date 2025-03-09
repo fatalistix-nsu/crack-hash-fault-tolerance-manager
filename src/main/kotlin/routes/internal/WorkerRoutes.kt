@@ -12,8 +12,8 @@ fun Application.registerWorkerRoutes() {
 
     routing {
         route("/internal/api/worker/hash/crack") {
-            register(workerPool)
-            complete(actorManager, workerPool)
+            postRegister(workerPool)
+            patchRequest(actorManager, workerPool)
         }
     }
 }

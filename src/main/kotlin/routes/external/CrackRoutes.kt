@@ -10,7 +10,7 @@ fun Application.registerCrackRoutes() {
 
     routing {
         route("/api/hash") {
-            startCrack(service)
+            postCrack(service)
             getStatus(service)
         }
     }

@@ -1,11 +1,8 @@
 package com.github.fatalistix.services
 
 import co.touchlab.stately.collections.ConcurrentMutableMap
-import com.github.fatalistix.domain.exception.NoWorkersAvailableException
 import com.github.fatalistix.domain.model.Worker
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.time.Duration
 
 class WorkerPool {
 

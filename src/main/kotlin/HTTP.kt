@@ -1,5 +1,6 @@
 package com.github.fatalistix
 
+import com.github.fatalistix.routes.exception.ConflictException
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
@@ -18,6 +19,9 @@ fun Application.configureHTTP() {
         }
         exception<NotFoundException> { call, cause ->
             call.respondText(status = HttpStatusCode.NotFound, text = cause.message.orEmpty())
+        }
+        exception<ConflictException> { call, cause ->
+            call.respondText(status = HttpStatusCode.Conflict, text = cause.message)
         }
     }
 }

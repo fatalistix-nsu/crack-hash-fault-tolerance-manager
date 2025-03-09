@@ -1,8 +1,8 @@
 package com.github.fatalistix.validators
 
-import com.github.fatalistix.routes.external.StartCrackRequest
+import com.github.fatalistix.routes.external.PostCrackRequest
 
-fun validateRequest(request: StartCrackRequest) = runCatching {
+fun validateRequest(request: PostCrackRequest) = runCatching {
     if (request.maxLength <= 0UL) {
         throw IllegalArgumentException("max length must be greater than 0")
     }

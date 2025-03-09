@@ -1,6 +1,6 @@
 package com.github.fatalistix.routes.internal
 
-import com.github.fatalistix.domain.model.CompletedSubTask
+import com.github.fatalistix.domain.model.CompletedTask
 import com.github.fatalistix.domain.model.Worker
 import com.github.fatalistix.services.WorkerPool
 import com.github.fatalistix.services.execution.ActorManager
@@ -9,7 +9,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 
-data class CompleteRequest(
+data class PatchRequestRequest(
     val requestId: String,
     val taskId: String,
     val workerId: String,
@@ -18,17 +18,17 @@ data class CompleteRequest(
     val data: List<String>,
 )
 
-fun Route.complete(actorManager: ActorManager, workerPool: WorkerPool) {
+fun Route.patchRequest(actorManager: ActorManager, workerPool: WorkerPool) {
 
     patch("/request") {
-        val request = call.receive<CompleteRequest>()
-        val worker = workerPool.get(request.workerId) ?: throw BadRequestException("Worker ${request.workerId} not found")
-        val completedSubTask = request.toModel(worker)
-        actorManager.notifyCompleted(completedSubTask)
+        val request = call.receive<PatchRequestRequest>()
+        val worker = workerPool.get(request.workerId) ?: throw NotFoundException("Worker ${request.workerId} not found")
+        val completedTask = request.toModel(worker)
+        actorManager.notifyCompleted(completedTask)
         call.respond(HttpStatusCode.Accepted, null)
     }
 }
 
-private fun CompleteRequest.toModel(worker: Worker) = CompletedSubTask(
+private fun PatchRequestRequest.toModel(worker: Worker) = CompletedTask(
     requestId, taskId, start, end, data, worker
 )

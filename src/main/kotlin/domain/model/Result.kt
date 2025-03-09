@@ -1,10 +1,12 @@
 package com.github.fatalistix.domain.model
 
 class Result private constructor(
-    val isCompleted: Boolean,
+    val status: RequestStatus,
     val data: List<String>,
 ) {
-    constructor() : this(false, listOf())
+    constructor() : this(RequestStatus.IN_PROGRESS, listOf())
 
-    fun complete(data: List<String>) = Result(true, data)
+    fun complete(data: List<String>) = Result(RequestStatus.READY, data)
+
+    fun error() = Result(RequestStatus.ERROR, data)
 }

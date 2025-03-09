@@ -2,9 +2,9 @@ package com.github.fatalistix.services.execution
 
 import co.touchlab.stately.collections.ConcurrentMutableSet
 import com.github.fatalistix.domain.exception.NoWorkersAvailableException
-import com.github.fatalistix.domain.model.CompletedSubTask
-import com.github.fatalistix.domain.model.SubTask
+import com.github.fatalistix.domain.model.CompletedTask
 import com.github.fatalistix.domain.model.Task
+import com.github.fatalistix.domain.model.Request
 import com.github.fatalistix.domain.model.Worker
 import com.github.fatalistix.services.WorkerPool
 import com.github.fatalistix.util.generateId
@@ -20,32 +20,32 @@ import kotlin.time.Duration
 
 class Actor(
     private val workerPool: WorkerPool,
-    private val task: Task,
+    private val request: Request,
     private val workerResponseTimeout: Duration,
     private val workerAcquireTimeout: Duration,
     private val log: Logger,
 ) {
-    private val completedParts = MutableSharedFlow<CompletedSubTask>()
-    private val unservedParts = Channel<SubTask>(Channel.UNLIMITED)
-    private val sender = SubTaskSender()
+    private val completedTasks = MutableSharedFlow<CompletedTask>()
+    private val unservedTasks = Channel<Task>(Channel.UNLIMITED)
+    private val client = TaskClient()
     private val scope = CoroutineScope(Dispatchers.IO)
     private val rangeAggregator = RangeAggregator()
     private val rangeAggregatorMutex = Mutex()
     private val result = ConcurrentMutableSet<String>()
 
     suspend fun process(): List<String> {
-        processSubTask(SubTaskGenerator(task))
+        processTasks(TaskGenerator(request))
 
         while (true) {
-            val result = unservedParts.receiveCatching()
+            val result = unservedTasks.receiveCatching()
             if (result.isClosed) {
                 break
             } else if (result.isFailure) {
                 continue
             }
 
-            val uncompletedSubTask = result.getOrThrow()
-            processSubTask(SubTaskGenerator(uncompletedSubTask))
+            val uncompletedTask = result.getOrThrow()
+            processTasks(TaskGenerator(uncompletedTask))
         }
 
         scope.cancel()
@@ -53,36 +53,36 @@ class Actor(
         return result.toList()
     }
 
-    private suspend fun processSubTask(generator: SubTaskGenerator) {
+    private suspend fun processTasks(generator: TaskGenerator) {
         while (generator.hasNext()) {
-            val worker = workerPool.takeOrThrow(workerAcquireTimeout, task)
-            log.info("picked worker [{}] for task [{}]", worker.id, task.id)
+            val worker = workerPool.takeOrThrow(workerAcquireTimeout, request)
+            log.info("picked worker [{}] for request [{}]", worker.id, request.id)
 
-            val subTask = generator.next(worker)
-            log.info("picked subtask [{}:{}) for task [{}] and worker [{}]", subTask.start, subTask.end, task.id, worker.id)
+            val task = generator.next(worker)
+            log.info("picked task [{}:{}) for request [{}] and worker [{}]", task.start, task.end, request.id, worker.id)
 
-            scope.launch { serveSubTask(subTask, worker) }
+            scope.launch { serveTask(task, worker) }
         }
     }
 
-    private suspend fun serveSubTask(subTask: SubTask, worker: Worker) {
-        val subTaskId = generateId()
+    private suspend fun serveTask(task: Task, worker: Worker) {
+        val taskId = generateId()
 
         log.info(
-            "sending subtask [{}:{}) with task_id [{}] and subtask_id [{}] to worker [{}]",
-            subTask.start,
-            subTask.end,
-            subTask.id,
-            subTaskId,
+            "sending task [{}:{}) for request [{}] with id [{}] to worker [{}]",
+            task.start,
+            task.end,
+            task.requestId,
+            taskId,
             worker.id
         )
 
         val receiveResult = withTimeoutOrNull(workerResponseTimeout) {
-            val deferred = async { completedParts.filter { it.subTaskId == subTaskId }.first() }
+            val deferred = async { completedTasks.filter { it.taskId == taskId }.first() }
 
-            val sendResult = sender.sendSubTask(subTaskId, subTask, worker)
-            if (sendResult.isFailure) {
-                log.error("failed to send subtask [{}]", subTaskId, sendResult.exceptionOrNull())
+            val postResult = client.post(taskId, task, worker)
+            if (postResult.isFailure) {
+                log.error("failed to post task [{}]", taskId, postResult.exceptionOrNull())
                 deferred.cancel()
                 null
             } else {
@@ -91,44 +91,44 @@ class Actor(
         }
 
         if (receiveResult == null) {
-            onFail(subTask, subTaskId, worker)
+            onFail(task, taskId, worker)
             return
         }
 
-        log.info("successfully processed subtask with subTaskId [{}]", subTaskId)
+        log.info("successfully processed task [{}]", taskId)
 
         workerPool.release(worker)
 
         result.addAll(receiveResult.data)
 
         val isCompleted = rangeAggregatorMutex.withLock {
-            rangeAggregator.addRange(subTask.start, subTask.end)
-            rangeAggregator.isFullyProcessed(task.size.value)
+            rangeAggregator.addRange(task.start, task.end)
+            rangeAggregator.isFullyProcessed(request.size.value)
         }
 
         if (isCompleted) {
-            log.info("task [{}] is completed", task.id)
-            unservedParts.close()
+            log.info("request [{}] is completed", request.id)
+            unservedTasks.close()
             return
         }
 
-        log.info("continuing task [{}]", task.id)
+        log.info("continuing request [{}]", request.id)
     }
 
-    suspend fun notifyCompleted(completedSubTask: CompletedSubTask) {
-        completedParts.emit(completedSubTask)
+    suspend fun notifyCompleted(completedTask: CompletedTask) {
+        completedTasks.emit(completedTask)
     }
 
-    private suspend fun onFail(subTask: SubTask, subTaskId: String, worker: Worker) {
-        log.error("failed with timeout or null for subTaskId [{}]", subTaskId)
-        unservedParts.send(subTask)
+    private suspend fun onFail(task: Task, taskId: String, worker: Worker) {
+        log.error("failed with timeout or null for taskId [{}]", taskId)
+        unservedTasks.send(task)
         workerPool.deregister(worker)
     }
 
-    private suspend fun WorkerPool.takeOrThrow(timeout: Duration, task: Task): Worker {
+    private suspend fun WorkerPool.takeOrThrow(timeout: Duration, request: Request): Worker {
         val worker = withTimeoutOrNull(timeout) { take() }
         if (worker == null) {
-            log.error("No worker found for task [{}]", task.id)
+            log.error("No worker found for request [{}]", request.id)
             throw NoWorkersAvailableException("No workers available")
         }
 

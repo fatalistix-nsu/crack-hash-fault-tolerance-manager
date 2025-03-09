@@ -1,6 +1,6 @@
 package com.github.fatalistix
 
-import com.github.fatalistix.routes.external.StartCrackRequest
+import com.github.fatalistix.routes.external.PostCrackRequest
 import com.github.fatalistix.routes.external.registerCrackRoutes
 import com.github.fatalistix.routes.internal.registerWorkerRoutes
 import com.github.fatalistix.validators.validateRequest
@@ -11,7 +11,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     install(RequestValidation) {
-        validate<StartCrackRequest> { request -> validateRequest(request).toValidationResult() }
+        validate<PostCrackRequest> { request -> validateRequest(request).toValidationResult() }
     }
 
     registerCrackRoutes()
