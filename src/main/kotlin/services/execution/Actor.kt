@@ -3,17 +3,15 @@ package com.github.fatalistix.services.execution
 import co.touchlab.stately.collections.ConcurrentMutableSet
 import com.github.fatalistix.domain.exception.NoWorkersAvailableException
 import com.github.fatalistix.domain.model.CompletedTask
-import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Request
+import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Worker
 import com.github.fatalistix.services.WorkerPool
 import com.github.fatalistix.util.generateId
 import io.ktor.util.logging.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration
@@ -25,7 +23,9 @@ class Actor(
     private val workerAcquireTimeout: Duration,
     private val log: Logger,
 ) {
-    private val completedTasks = MutableSharedFlow<CompletedTask>()
+    private val completedTasksChan = Channel<CompletedTask>(Channel.UNLIMITED)
+    private val completedTasksFlow = completedTasksChan.receiveAsFlow()
+    private val acceptedData = Channel<List<String>>(Channel.UNLIMITED)
     private val unservedTasks = Channel<Task>(Channel.UNLIMITED)
     private val client = TaskClient()
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -33,7 +33,14 @@ class Actor(
     private val rangeAggregatorMutex = Mutex()
     private val result = ConcurrentMutableSet<String>()
 
-    suspend fun process(): List<String> {
+    fun processAsync(): Channel<List<String>> {
+        val deferred = scope.async { process() }
+        deferred.invokeOnCompletion { scope.cancel() }
+
+        return acceptedData
+    }
+
+    private suspend fun process() {
         processTasks(TaskGenerator(request))
 
         while (true) {
@@ -47,15 +54,11 @@ class Actor(
             val uncompletedTask = result.getOrThrow()
             processTasks(TaskGenerator(uncompletedTask))
         }
-
-        scope.cancel()
-
-        return result.toList()
     }
 
     private suspend fun processTasks(generator: TaskGenerator) {
         while (generator.hasNext()) {
-            val worker = workerPool.takeOrThrow(workerAcquireTimeout, request)
+            val worker = workerPool.takeOrThrow(workerAcquireTimeout)
             log.info("picked worker [{}] for request [{}]", worker.id, request.id)
 
             val task = generator.next(worker)
@@ -78,7 +81,7 @@ class Actor(
         )
 
         val receiveResult = withTimeoutOrNull(workerResponseTimeout) {
-            val deferred = async { completedTasks.filter { it.taskId == taskId }.first() }
+            val deferred = scope.async { completedTasksFlow.filter { it.taskId == taskId }.first() }
 
             val postResult = client.post(taskId, task, worker)
             if (postResult.isFailure) {
@@ -100,6 +103,7 @@ class Actor(
         workerPool.release(worker)
 
         result.addAll(receiveResult.data)
+        acceptedData.send(receiveResult.data)
 
         val isCompleted = rangeAggregatorMutex.withLock {
             rangeAggregator.addRange(task.start, task.end)
@@ -109,6 +113,8 @@ class Actor(
         if (isCompleted) {
             log.info("request [{}] is completed", request.id)
             unservedTasks.close()
+            completedTasksChan.close()
+            acceptedData.close()
             return
         }
 
@@ -116,7 +122,7 @@ class Actor(
     }
 
     suspend fun notifyCompleted(completedTask: CompletedTask) {
-        completedTasks.emit(completedTask)
+        completedTasksChan.send(completedTask)
     }
 
     private suspend fun onFail(task: Task, taskId: String, worker: Worker) {
@@ -125,7 +131,7 @@ class Actor(
         workerPool.deregister(worker)
     }
 
-    private suspend fun WorkerPool.takeOrThrow(timeout: Duration, request: Request): Worker {
+    private suspend fun WorkerPool.takeOrThrow(timeout: Duration): Worker {
         val worker = withTimeoutOrNull(timeout) { take() }
         if (worker == null) {
             log.error("No worker found for request [{}]", request.id)
