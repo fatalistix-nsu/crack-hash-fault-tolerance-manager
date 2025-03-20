@@ -1,6 +1,7 @@
 package com.github.fatalistix
 
 import com.github.fatalistix.routes.exception.ConflictException
+import com.github.fatalistix.routes.exception.UnprocessableEntityException
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
@@ -22,6 +23,9 @@ fun Application.configureHTTP() {
         }
         exception<ConflictException> { call, cause ->
             call.respondText(status = HttpStatusCode.Conflict, text = cause.message)
+        }
+        exception<UnprocessableEntityException> { call, cause ->
+            call.respondText(status = HttpStatusCode.UnprocessableEntity, text = cause.message)
         }
     }
 }
