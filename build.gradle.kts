@@ -26,6 +26,7 @@ repositories {
 dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.rabbitmq:amqp-client")
     implementation("dev.hayden:khealth:3.0.1")
     implementation("io.ktor:ktor-client-cio")
     implementation("io.ktor:ktor-client-content-negotiation")
