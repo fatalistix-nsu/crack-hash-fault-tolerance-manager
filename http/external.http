@@ -4,8 +4,8 @@ Content-Type: application/json
 
 {
   "hash": "e2fc714c4727ee9395f324cd2e7f331f",
-  "max_length": 5
+  "max_length": 4
 }
 
 ### GET request to check task status
-GET http://0.0.0.0:6969/api/hash/status?requestId=6ead012b-14ee-4473-8f1d-456e70c7c4b9
+GET http://0.0.0.0:6969/api/hash/status?requestId=67dc2287e2d0b0284f2bcd31
