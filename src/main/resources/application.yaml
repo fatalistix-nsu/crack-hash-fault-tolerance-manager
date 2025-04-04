@@ -19,3 +19,16 @@ application:
     database: $APPLICATION_MONGO_DATABASE
     write:
       timeout: 5s
+  rabbitmq:
+    host: $APPLICATION_RABBITMQ_HOST
+    port: $APPLICATION_RABBITMQ_PORT
+    username: $APPLICATION_RABBITMQ_USERNAME
+    password: $APPLICATION_RABBITMQ_PASSWORD
+    task:
+      exchange:
+        name: $APPLICATION_RABBITMQ_TASK_EXCHANGE_NAME
+      message:
+        expiration: 200s
+    result:
+      exchange:
+        name: $APPLICATION_RABBITMQ_RESULT_EXCHANGE_NAME
