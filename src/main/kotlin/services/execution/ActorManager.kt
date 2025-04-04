@@ -3,15 +3,15 @@ package com.github.fatalistix.services.execution
 import co.touchlab.stately.collections.ConcurrentMutableMap
 import com.github.fatalistix.domain.model.CompletedTask
 import com.github.fatalistix.domain.model.Request
+import com.github.fatalistix.rabbit.producer.RabbitTaskProducer
 import com.github.fatalistix.services.WorkerPool
 import io.ktor.util.logging.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.sync.Semaphore
 import kotlin.time.Duration
 
 class ActorManager(
+    private val producer: RabbitTaskProducer,
     private val workerPool: WorkerPool,
     count: Int,
     private val workerResponseTimeout: Duration,
@@ -23,7 +23,7 @@ class ActorManager(
 
     suspend fun execute(request: Request): Channel<List<String>> {
         semaphore.acquire()
-        val actor = Actor(workerPool, request, workerResponseTimeout, workerAcquireTimeout, log)
+        val actor = Actor(producer, workerPool, request, workerResponseTimeout, workerAcquireTimeout, log)
         requestIdToActor[request.id] = actor
         val chan = actor.processAsync()
         chan.invokeOnClose {
