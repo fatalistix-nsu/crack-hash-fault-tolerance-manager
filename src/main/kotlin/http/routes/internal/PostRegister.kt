@@ -1,6 +1,6 @@
-package com.github.fatalistix.routes.internal
+package com.github.fatalistix.http.routes.internal
 
-import com.github.fatalistix.routes.exception.ConflictException
+import com.github.fatalistix.http.exception.ConflictException
 import com.github.fatalistix.services.WorkerPool
 import io.ktor.http.*
 import io.ktor.server.plugins.*
