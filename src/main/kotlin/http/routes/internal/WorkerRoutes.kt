@@ -1,4 +1,4 @@
-package com.github.fatalistix.routes.internal
+package com.github.fatalistix.http.routes.internal
 
 import com.github.fatalistix.services.WorkerPool
 import com.github.fatalistix.services.execution.ActorManager
