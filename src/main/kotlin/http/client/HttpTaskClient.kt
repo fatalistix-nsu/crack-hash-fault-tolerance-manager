@@ -1,11 +1,11 @@
-package com.github.fatalistix.services.execution
+package com.github.fatalistix.http.client
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Worker
-import com.github.fatalistix.services.execution.TaskClient.Companion.URL
+import com.github.fatalistix.http.client.HttpTaskClient.Companion.URL
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
