@@ -1,6 +1,6 @@
 package com.github.fatalistix.validators
 
-import com.github.fatalistix.routes.external.PostCrackRequest
+import com.github.fatalistix.http.routes.external.PostCrackRequest
 
 fun validateRequest(request: PostCrackRequest) = runCatching {
     if (request.maxLength <= 0UL) {
