@@ -6,17 +6,21 @@ import com.github.fatalistix.domain.model.CompletedTask
 import com.github.fatalistix.domain.model.Request
 import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Worker
+import com.github.fatalistix.rabbit.producer.RabbitTaskProducer
 import com.github.fatalistix.services.WorkerPool
 import com.github.fatalistix.util.generateId
 import io.ktor.util.logging.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration
 
 class Actor(
+    private val producer: RabbitTaskProducer,
     private val workerPool: WorkerPool,
     private val request: Request,
     private val workerResponseTimeout: Duration,
@@ -27,7 +31,6 @@ class Actor(
     private val completedTasksFlow = completedTasksChan.receiveAsFlow()
     private val acceptedData = Channel<List<String>>(Channel.UNLIMITED)
     private val unservedTasks = Channel<Task>(Channel.UNLIMITED)
-    private val client = TaskClient()
     private val scope = CoroutineScope(Dispatchers.IO)
     private val rangeAggregator = RangeAggregator()
     private val rangeAggregatorMutex = Mutex()
@@ -83,9 +86,9 @@ class Actor(
         val receiveResult = withTimeoutOrNull(workerResponseTimeout) {
             val deferred = scope.async { completedTasksFlow.filter { it.taskId == taskId }.first() }
 
-            val postResult = client.post(taskId, task, worker)
-            if (postResult.isFailure) {
-                log.error("failed to post task [{}]", taskId, postResult.exceptionOrNull())
+            val sendResult = producer.send(taskId, task, worker)
+            if (sendResult.isFailure) {
+                log.error("failed to post task [{}]", taskId, sendResult.exceptionOrNull())
                 deferred.cancel()
                 null
             } else {
