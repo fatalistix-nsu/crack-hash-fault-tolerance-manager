@@ -1,7 +1,7 @@
-package com.github.fatalistix.routes.external
+package com.github.fatalistix.http.routes.external
 
 import com.github.fatalistix.domain.model.RequestResult
-import com.github.fatalistix.routes.exception.UnprocessableEntityException
+import com.github.fatalistix.http.exception.UnprocessableEntityException
 import com.github.fatalistix.services.CrackService
 import io.ktor.server.plugins.*
 import io.ktor.server.response.*
