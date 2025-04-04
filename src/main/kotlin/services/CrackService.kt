@@ -5,8 +5,7 @@ import com.github.fatalistix.domain.model.RequestResult
 import com.github.fatalistix.domain.model.RequestStatus
 import com.github.fatalistix.services.execution.ActorManager
 import com.mongodb.client.model.Filters.eq
-import com.mongodb.client.model.Updates.pushEach
-import com.mongodb.client.model.Updates.set
+import com.mongodb.client.model.Updates.*
 import com.mongodb.kotlin.client.MongoCollection
 import com.mongodb.kotlin.client.MongoDatabase
 import io.ktor.util.logging.*
@@ -55,7 +54,7 @@ class CrackService(
             result.onSuccess { data ->
                 collection.updateOne(
                     eq("_id", ObjectId(request.id)),
-                    pushEach("data", data),
+                    addEachToSet("data", data),
                 )
                 log.info("Added result words {} to request {}", data, request)
             }
