@@ -7,5 +7,5 @@ data class RequestResult(
     @BsonId
     val requestId: ObjectId = ObjectId(),
     var status: RequestStatus = RequestStatus.IN_PROGRESS,
-    val data: MutableList<String> = mutableListOf(),
+    val data: MutableSet<String> = mutableSetOf(),
 )
