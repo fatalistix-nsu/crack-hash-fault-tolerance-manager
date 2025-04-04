@@ -22,4 +22,4 @@ fun Route.getStatus(service: CrackService) {
     }
 }
 
-private fun RequestResult.toResponse() = GetStatusResponse(status.toString(), data)
+private fun RequestResult.toResponse() = GetStatusResponse(status.toString(), data.toList())
