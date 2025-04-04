@@ -1,4 +1,4 @@
-package com.github.fatalistix.routes.external
+package com.github.fatalistix.http.routes.external
 
 import com.github.fatalistix.services.CrackService
 import io.ktor.server.request.*
