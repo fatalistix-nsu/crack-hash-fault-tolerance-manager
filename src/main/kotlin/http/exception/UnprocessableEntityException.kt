@@ -1,4 +1,4 @@
-package com.github.fatalistix.http.routes.exception
+package com.github.fatalistix.http.exception
 
 import io.ktor.server.plugins.*
 
