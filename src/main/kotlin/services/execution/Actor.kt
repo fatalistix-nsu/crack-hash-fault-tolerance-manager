@@ -88,7 +88,7 @@ class Actor(
 
             val sendResult = producer.send(taskId, task, worker)
             if (sendResult.isFailure) {
-                log.error("failed to post task [{}]", taskId, sendResult.exceptionOrNull())
+                log.error("failed to send task [{}]", taskId, sendResult.exceptionOrNull())
                 deferred.cancel()
                 null
             } else {
