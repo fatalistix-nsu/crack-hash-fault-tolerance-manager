@@ -1,7 +1,7 @@
 package com.github.fatalistix
 
-import com.github.fatalistix.routes.exception.ConflictException
-import com.github.fatalistix.routes.exception.UnprocessableEntityException
+import com.github.fatalistix.http.exception.ConflictException
+import com.github.fatalistix.http.exception.UnprocessableEntityException
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
