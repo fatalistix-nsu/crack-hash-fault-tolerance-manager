@@ -2,9 +2,9 @@ package com.github.fatalistix.services.execution
 
 import java.util.TreeSet
 
-internal class RangeAggregator {
-    private val ranges = TreeSet<Pair<ULong, ULong>>(compareBy { it.first })
-
+internal class RangeAggregator(
+    private val ranges: MutableSet<Pair<ULong, ULong>> = TreeSet<Pair<ULong, ULong>>(compareBy { it.first })
+) {
     fun addRange(start: ULong, end: ULong) {
         var newStart = start
         var newEnd = end
