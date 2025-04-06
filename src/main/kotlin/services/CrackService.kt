@@ -4,15 +4,12 @@ import com.github.fatalistix.domain.model.Request
 import com.github.fatalistix.domain.model.RequestStatus
 import com.github.fatalistix.mongo.repository.RequestResultRepository
 import com.github.fatalistix.services.execution.ActorManager
-import com.mongodb.client.model.Filters.eq
-import com.mongodb.client.model.Updates.*
 import io.ktor.util.logging.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.onClosed
 import kotlinx.coroutines.channels.onSuccess
 import kotlinx.coroutines.launch
-import org.bson.types.ObjectId
 
 class CrackService(
     private val actorManager: ActorManager,
