@@ -24,6 +24,8 @@ application:
     port: $APPLICATION_RABBITMQ_PORT
     username: $APPLICATION_RABBITMQ_USERNAME
     password: $APPLICATION_RABBITMQ_PASSWORD
+    reconnect:
+      delay: 5s
     task:
       exchange:
         name: $APPLICATION_RABBITMQ_TASK_EXCHANGE_NAME
