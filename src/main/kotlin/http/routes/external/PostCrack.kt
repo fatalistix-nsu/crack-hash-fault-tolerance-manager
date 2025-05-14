@@ -7,7 +7,7 @@ import io.ktor.server.routing.*
 
 data class PostCrackRequest(
     val hash: String,
-    val maxLength: ULong,
+    val maxLength: Long,
 )
 
 data class PostCrackResponse(
