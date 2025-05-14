@@ -2,7 +2,6 @@ package com.github.fatalistix
 
 import com.github.fatalistix.http.routes.external.PostCrackRequest
 import com.github.fatalistix.http.routes.external.registerCrackRoutes
-import com.github.fatalistix.http.routes.internal.registerWorkerRoutes
 import com.github.fatalistix.validators.validateRequest
 import io.ktor.server.application.*
 import io.ktor.server.plugins.requestvalidation.*
@@ -15,7 +14,6 @@ fun Application.configureRouting() {
     }
 
     registerCrackRoutes()
-    registerWorkerRoutes()
     routing {
         swaggerUI(path = "openapi")
     }
