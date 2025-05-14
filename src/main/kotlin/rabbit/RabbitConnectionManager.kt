@@ -2,10 +2,10 @@ package com.github.fatalistix.rabbit
 
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.ConnectionFactory
-import io.ktor.util.logging.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.slf4j.LoggerFactory
 import kotlin.time.Duration
 
 class RabbitConnectionManager(
@@ -14,8 +14,11 @@ class RabbitConnectionManager(
     private val username: String,
     private val password: String,
     private val reconnectDelay: Duration,
-    private val log: Logger,
 ) {
+    companion object {
+        private val log = LoggerFactory.getLogger(RabbitConnectionManager::class.java)!!
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO)
 
     private val connectionFactory = ConnectionFactory().apply {
@@ -43,10 +46,11 @@ class RabbitConnectionManager(
         while (true) {
             val actualChannel = _channelFlow.value
             if (actualChannel != null && actualChannel.isOpen) {
+                delay(reconnectDelay)
                 continue
             }
 
-            log.info("Connecting to {}: {}", host, port)
+            log.info("Connecting to {}:{}", host, port)
             val result = reconnect()
             if (result.isFailure) {
                 log.warn("RabbitMQ is unavailable at {}:{}", host, port)
