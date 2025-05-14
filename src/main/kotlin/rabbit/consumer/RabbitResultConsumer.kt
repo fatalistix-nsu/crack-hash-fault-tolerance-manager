@@ -7,77 +7,88 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.fatalistix.domain.model.CompletedTask
-import com.github.fatalistix.domain.model.Worker
-import com.github.fatalistix.services.WorkerPool
+import com.github.fatalistix.rabbit.RabbitConnectionManager
 import com.github.fatalistix.services.execution.ActorManager
 import com.rabbitmq.client.AMQP
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.DefaultConsumer
 import com.rabbitmq.client.Envelope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import org.slf4j.LoggerFactory
 
 private data class RabbitResultMessage(
     val requestId: String,
     val taskId: String,
-    val workerId: String,
     val start: ULong,
     val end: ULong,
     val data: List<String>,
 )
 
 class RabbitResultConsumer(
-    private val channel: Channel,
-    exchangeName: String,
-    actorManager: ActorManager,
-    workerPool: WorkerPool,
+    private val connectionManager: RabbitConnectionManager,
+    private val actorManager: ActorManager,
+    private val exchangeName: String,
 ) {
+    companion object {
+        const val QUEUE_NAME = "rabbit-result-queue"
+        val log = LoggerFactory.getLogger(RabbitResultConsumer::class.java)!!
+    }
+
     private val objectMapper = jacksonObjectMapper().apply {
         registerModule(kotlinModule())
         enable(SerializationFeature.INDENT_OUTPUT)
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE
     }
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private val consumer = object : DefaultConsumer(channel) {
 
-        override fun handleDelivery(
-            consumerTag: String?,
-            envelope: Envelope?,
-            properties: AMQP.BasicProperties?,
-            body: ByteArray
-        ) {
-            val message = objectMapper.readValue<RabbitResultMessage>(body)
-            val worker = workerPool.get(message.workerId) ?: return
-            val completedTask = message.toModel(worker)
-            scope.launch {
-                actorManager.notifyCompleted(completedTask)
-            }
-        }
-    }
-
-    companion object {
-        const val QUEUE_NAME = "rabbit-result-queue"
-    }
-
-    init {
-        channel.queueDeclare(QUEUE_NAME, true, false, false, null)
-        channel.queueBind(QUEUE_NAME, exchangeName, "")
-    }
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun start() {
         scope.launch {
-            channel.basicConsume(QUEUE_NAME, true, consumer)
+            connectionManager.channelFlow.collect { channel ->
+                if (channel == null || !channel.isOpen) {
+                    log.warn("Received closed channel")
+                    return@collect
+                }
+
+                log.info("Received new channel, rebinding")
+
+                channel.queueDeclare(QUEUE_NAME, true, false, false, null)
+                channel.queueBind(QUEUE_NAME, exchangeName, "")
+
+                val consumer = buildConsumer(channel)
+
+                channel.basicConsume(QUEUE_NAME, false, consumer)
+            }
         }
     }
 
     fun stop() {
         scope.cancel()
     }
+
+    private fun buildConsumer(channel: Channel) = object : DefaultConsumer(channel) {
+
+        override fun handleDelivery(
+            consumerTag: String,
+            envelope: Envelope,
+            properties: AMQP.BasicProperties,
+            body: ByteArray
+        ) {
+            val message = objectMapper.readValue<RabbitResultMessage>(body)
+            val completedTask = message.toModel()
+
+            log.info("Received completed task [{}]", completedTask)
+
+            scope.launch {
+                actorManager.notifyCompleted(completedTask)
+                completedTask.completableDeferred.await()
+                channel.basicAck(envelope.deliveryTag, false)
+            }
+        }
+    }
 }
 
-private fun RabbitResultMessage.toModel(worker: Worker) = CompletedTask(
-    requestId, taskId, start, end, data, worker
+private fun RabbitResultMessage.toModel() = CompletedTask(
+    taskId, requestId, start, end, data, CompletableDeferred()
 )
