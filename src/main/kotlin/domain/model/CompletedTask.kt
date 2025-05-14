@@ -1,10 +1,12 @@
 package com.github.fatalistix.domain.model
 
+import kotlinx.coroutines.CompletableDeferred
+
 data class CompletedTask(
+    val id: String,
     val requestId: String,
-    val taskId: String,
     val start: ULong,
     val end: ULong,
     val data: List<String>,
-    val worker: Worker,
+    val completableDeferred: CompletableDeferred<Unit>,
 )
