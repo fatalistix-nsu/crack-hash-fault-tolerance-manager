@@ -7,13 +7,10 @@ ktor:
 
 application:
   alphabet: "abcdefghijklmnopqrstuvwxyz1234567890"
+  task:
+    size: 10000000
   actor:
     count: 5
-  worker:
-    response:
-      timeout: 200s
-    acquire:
-      timeout: 200s
   mongo:
     connection: $APPLICATION_MONGO_CONNECTION
     database: $APPLICATION_MONGO_DATABASE
@@ -24,13 +21,13 @@ application:
     port: $APPLICATION_RABBITMQ_PORT
     username: $APPLICATION_RABBITMQ_USERNAME
     password: $APPLICATION_RABBITMQ_PASSWORD
+    publish:
+      timeout: 200s
     reconnect:
       delay: 5s
     task:
       exchange:
         name: $APPLICATION_RABBITMQ_TASK_EXCHANGE_NAME
-      message:
-        expiration: 200s
     result:
       exchange:
         name: $APPLICATION_RABBITMQ_RESULT_EXCHANGE_NAME
