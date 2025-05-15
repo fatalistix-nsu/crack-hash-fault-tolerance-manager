@@ -1,34 +1,36 @@
 package com.github.fatalistix.services.execution
 
-import com.github.fatalistix.domain.model.Task
 import com.github.fatalistix.domain.model.Request
-import com.github.fatalistix.domain.model.Worker
+import com.github.fatalistix.domain.model.Task
+import com.github.fatalistix.util.generateId
 
 internal class TaskGenerator (
-    private val originalTask: Task,
+    private val request: Request,
+    private val taskSize: Long,
 ) {
-    constructor(request: Request) : this(request.toTask(0UL, request.size.value))
-
-    private var currentOffset = originalTask.start
-    private val size = originalTask.end
+    private var currentOffset = 0L
+    private val size = request.size.value
 
     fun hasNext(): Boolean = currentOffset < size
 
-    fun next(worker: Worker): Task {
+    fun next(): Task {
         check(hasNext()) { "Generator has generated all tasks" }
-        val performance = worker.performance
         val start = currentOffset
-        currentOffset += performance
+        currentOffset += taskSize
         val end = if (currentOffset < size) currentOffset else size
-        val task = originalTask.cut(start, end)
+        val task = request.cutTask(start, end)
         return task
+    }
+
+    fun generateAll(): List<Task> {
+        val result = mutableListOf<Task>()
+        while (hasNext()) {
+            result += next()
+        }
+        return result
     }
 }
 
-private fun Request.toTask(start: ULong, end: ULong) = Task(
-    id, alphabet, hash, maxLength, start, end
-)
-
-private fun Task.cut(start: ULong, end: ULong) = Task(
-    requestId, alphabet, hash, maxLength, start, end
+private fun Request.cutTask(start: Long, end: Long) = Task(
+    generateId(), id, alphabet, hash, maxLength, start, end
 )
