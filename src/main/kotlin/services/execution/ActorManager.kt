@@ -3,37 +3,75 @@ package com.github.fatalistix.services.execution
 import co.touchlab.stately.collections.ConcurrentMutableMap
 import com.github.fatalistix.domain.model.CompletedTask
 import com.github.fatalistix.domain.model.Request
+import com.github.fatalistix.mongo.repository.RequestResultRepository
+import com.github.fatalistix.mongo.repository.TaskRepository
 import com.github.fatalistix.rabbit.producer.RabbitTaskProducer
-import com.github.fatalistix.services.WorkerPool
-import io.ktor.util.logging.*
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
-import kotlin.time.Duration
+import kotlinx.coroutines.sync.withPermit
+import org.slf4j.LoggerFactory
 
 class ActorManager(
     private val producer: RabbitTaskProducer,
-    private val workerPool: WorkerPool,
-    count: Int,
-    private val workerResponseTimeout: Duration,
-    private val workerAcquireTimeout: Duration,
-    private val log: Logger,
+    private val taskRepository: TaskRepository,
+    private val requestResultRepository: RequestResultRepository,
+    private val taskSize: Long,
+    actorCount: Int,
 ) {
-    private val semaphore = Semaphore(count)
+    companion object {
+        private val log = LoggerFactory.getLogger(ActorManager::class.java)!!
+    }
+
+    private val semaphore = Semaphore(actorCount)
     private val requestIdToActor = ConcurrentMutableMap<String, Actor>()
 
-    suspend fun execute(request: Request): Channel<List<String>> {
-        semaphore.acquire()
-        val actor = Actor(producer, workerPool, request, workerResponseTimeout, workerAcquireTimeout, log)
-        requestIdToActor[request.id] = actor
-        val chan = actor.processAsync()
-        chan.invokeOnClose {
-            semaphore.release()
+    init {
+        val allReady = requestResultRepository.getAllReady()
+        allReady.forEach { rr -> taskRepository.deleteAll(rr.request.id) }
+
+        val allInProgress = requestResultRepository.getAllInProgress()
+        if (allInProgress.isNotEmpty()) {
+            val scope = CoroutineScope(Dispatchers.IO)
+            val jobs = mutableListOf<Job>()
+            allInProgress.forEach { rr ->
+                jobs += scope.launch {
+                    execute(rr.request)
+                }
+            }
+
+            scope.launch {
+                jobs.forEach { it.join() }
+                scope.cancel()
+            }
+        }
+    }
+
+    suspend fun execute(request: Request) {
+        semaphore.withPermit {
+            log.info("Creating actor for request [{}]", request.id)
+
+            val actor = Actor(
+                producer,
+                taskRepository,
+                requestResultRepository,
+                request,
+                taskSize,
+            )
+
+            requestIdToActor[request.id] = actor
+            actor.process()
+
             requestIdToActor.remove(request.id)
         }
-        return chan
     }
 
     suspend fun notifyCompleted(completedTask: CompletedTask) {
-        requestIdToActor[completedTask.requestId]?.notifyCompleted(completedTask)
+        val actor = requestIdToActor[completedTask.requestId]
+        if (actor == null) {
+            log.error("Actor for request [{}] and task [{}] not found", completedTask.requestId, completedTask.id)
+            return
+        }
+
+        actor.notifyCompleted(completedTask)
     }
 }
